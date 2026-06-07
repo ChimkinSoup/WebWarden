@@ -1,0 +1,48 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "WebWardenSettings",
+  "type": "object",
+  "required": ["categories", "listMode", "resetHour"],
+  "properties": {
+    "listMode": { "enum": ["blocklist", "allowlist"] },
+    "resetHour": { "type": "integer", "minimum": 0, "maximum": 23 },
+    "allowlistAuthDomains": { "type": "array", "items": { "type": "string" } },
+    "extraTimeOnRestartMs": { "type": "integer", "minimum": 0 },
+    "emergencyPauseMs": { "type": "integer", "minimum": 0 },
+    "emergencyPauseUsedDate": { "type": ["string", "null"] },
+    "emergencyPauseCategoryId": { "type": ["string", "null"] },
+    "settingsLocked": { "type": "boolean" },
+    "firstEditDone": { "type": "boolean" },
+    "companionConnected": { "type": "boolean" },
+    "incognitoAllowed": { "type": "boolean" },
+    "guardActive": { "type": "boolean" },
+    "lastGlobalResetDate": { "type": ["string", "null"] },
+    "bedtime": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "start": { "type": "string", "pattern": "^\\d{2}:\\d{2}$" },
+        "end": { "type": "string", "pattern": "^\\d{2}:\\d{2}$" },
+        "hardcore": { "type": "boolean" }
+      }
+    },
+    "productivitySites": { "type": "array", "items": { "type": "string" } },
+    "customQuotes": { "type": "array", "items": { "type": "string" } },
+    "customImages": { "type": "array", "items": { "type": "string" } },
+    "categories": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "sites", "dailyLimitMs", "remainingMs"],
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "sites": { "type": "array", "items": { "type": "string" } },
+          "dailyLimitMs": { "type": "integer", "minimum": 0 },
+          "remainingMs": { "type": "integer", "minimum": 0 },
+          "lastResetDate": { "type": ["string", "null"] }
+        }
+      }
+    }
+  }
+}

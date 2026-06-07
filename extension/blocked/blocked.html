@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WebWarden — Blocked</title>
+  <link rel="stylesheet" href="../shared/tokens.css" />
+  <link rel="stylesheet" href="../shared/fonts.css" />
+  <link rel="stylesheet" href="../shared/layout.css" />
+  <link rel="stylesheet" href="../shared/buttons.css" />
+  <link rel="stylesheet" href="blocked.css" />
+</head>
+<body>
+  <header class="top-bar">
+    <span class="logo">WebWarden</span>
+    <div class="actions">
+      <button id="btn-restart" class="btn btn-primary" hidden>Request More Time</button>
+      <button id="btn-emergency" class="btn btn-secondary" hidden>Emergency Pause</button>
+    </div>
+  </header>
+
+  <main class="content">
+    <div class="content-inner">
+      <div id="quote-view" class="quote-view" hidden>
+        <blockquote id="quote-text"></blockquote>
+      </div>
+      <div id="image-view" class="image-view" hidden>
+        <img id="block-image" alt="Blocked" />
+      </div>
+      <p id="reason-label" class="reason-label"></p>
+
+      <details id="debug-panel" class="debug-panel">
+        <summary>Debug info</summary>
+        <pre id="debug-content" class="debug-content">Loading…</pre>
+        <div class="btn-row debug-actions">
+          <button id="btn-refresh-blocking" class="btn btn-ghost" type="button">Refresh blocking rules</button>
+          <button id="btn-restore-dev-time" class="btn btn-ghost" type="button" hidden>Restore category time (dev)</button>
+          <button id="btn-copy-debug" class="btn btn-ghost" type="button">Copy debug JSON</button>
+        </div>
+        <p id="debug-action-status" class="status-box"></p>
+      </details>
+
+      <section id="bedtime-challenge" class="challenge-panel stack-sm" hidden>
+        <h2>Productivity Challenge</h2>
+        <div class="step">
+          <p class="step-label">Type the string below exactly (100 characters). No backspace.</p>
+          <div id="challenge-display" class="challenge-display"></div>
+          <input id="challenge-input" class="challenge-input" type="text" autocomplete="off" autocorrect="off" spellcheck="false" />
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <div id="restart-modal" class="modal blocked-modal" hidden>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Request More Time</h2>
+        <button id="btn-close-modal" class="modal-close" type="button" aria-label="Close dialog">&times;</button>
+      </div>
+      <div class="modal-body stack">
+        <section class="step">
+          <p class="step-label">Restart your laptop, then click below to verify and receive extra time.</p>
+          <button id="btn-verify-restart" class="btn btn-primary" type="button">Restart Now</button>
+          <p id="restart-status" class="status-box" aria-live="polite"></p>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="blocked.js"></script>
+</body>
+</html>

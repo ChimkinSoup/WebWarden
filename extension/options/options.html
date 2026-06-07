@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WebWarden Settings</title>
+  <link rel="stylesheet" href="../shared/tokens.css" />
+  <link rel="stylesheet" href="../shared/fonts.css" />
+  <link rel="stylesheet" href="../shared/layout.css" />
+  <link rel="stylesheet" href="../shared/time-toast.css" />
+  <link rel="stylesheet" href="../shared/buttons.css" />
+  <link rel="stylesheet" href="options.css" />
+</head>
+<body>
+  <header class="page-header stack-sm">
+    <h1>WebWarden</h1>
+    <p class="subtitle">Screentime enforcement settings</p>
+    <div id="guard-banner" class="guard-banner" hidden></div>
+    <div id="lock-banner" class="lock-banner" hidden>
+      Settings are locked. Restart your laptop and complete the typing challenge to edit.
+      <button id="btn-unlock" class="btn btn-primary">Unlock Settings</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="panel stack-sm" id="section-categories">
+      <h2>Categories</h2>
+      <p class="hint">Each category has its own independent time pool. While locked, type a domain and press Enter to add it.</p>
+      <div id="categories-list"></div>
+      <button id="btn-add-category" class="btn btn-secondary">Add Category</button>
+    </section>
+
+    <section class="panel stack-sm lockable-panel" id="section-global">
+      <h2>Global</h2>
+      <label class="field">
+        List mode
+        <select id="list-mode" data-protected>
+          <option value="blocklist">Blocklist (block listed sites)</option>
+          <option value="allowlist">Allowlist (allow only listed sites)</option>
+        </select>
+      </label>
+      <label class="field">
+        Daily reset hour (0–23)
+        <input type="number" id="reset-hour" min="0" max="23" data-protected />
+      </label>
+      <label class="field">
+        Extra time on restart (minutes)
+        <input type="number" id="extra-restart-min" min="1" data-protected />
+      </label>
+      <label class="field">
+        Emergency pause duration (minutes)
+        <input type="number" id="emergency-min" min="1" data-protected />
+      </label>
+    </section>
+
+    <section class="panel stack-sm lockable-panel" id="section-bedtime">
+      <h2>Bedtime</h2>
+      <label class="field checkbox">
+        <input type="checkbox" id="bedtime-enabled" data-protected /> Enable bedtime
+      </label>
+      <label class="field">
+        Start (HH:MM)
+        <input type="time" id="bedtime-start" data-protected />
+      </label>
+      <label class="field">
+        End (HH:MM)
+        <input type="time" id="bedtime-end" data-protected />
+      </label>
+      <label class="field checkbox">
+        <input type="checkbox" id="bedtime-hardcore" data-protected /> Hardcore bedtime (no bypasses)
+      </label>
+      <label class="field">
+        Productivity sites (one per line)
+        <textarea id="productivity-sites" rows="4" data-protected></textarea>
+      </label>
+    </section>
+
+    <section class="panel stack-sm lockable-panel" id="section-content">
+      <h2>Block Page Content</h2>
+      <label class="field">
+        Custom quotes (one per line)
+        <textarea id="custom-quotes" rows="4" data-protected></textarea>
+      </label>
+      <label class="field">
+        Custom image URLs (one per line)
+        <textarea id="custom-images" rows="4" data-protected></textarea>
+      </label>
+    </section>
+
+    <section class="panel stack-sm lockable-panel" id="section-analytics">
+      <h2>Analytics</h2>
+      <div id="analytics-display" class="analytics">Loading...</div>
+    </section>
+
+    <div class="actions-bar">
+      <button id="btn-save" class="btn btn-primary">Save Settings</button>
+    </div>
+
+    <section class="panel dev-panel stack-sm" id="section-dev">
+      <h2>Developer</h2>
+      <p class="hint">Debug tools only. Bypasses settings lock and lets you test restart detection.</p>
+      <div id="dev-disabled">
+        <button id="btn-enable-dev" class="btn btn-secondary">Enable Developer Mode</button>
+      </div>
+      <div id="dev-enabled" class="stack" hidden>
+        <p class="dev-badge">Developer mode active — all settings editable without friction.</p>
+        <section class="step">
+          <div class="btn-row">
+            <button id="btn-check-restart" class="btn btn-primary">Check Restart Validity</button>
+            <button id="btn-simulate-restart" class="btn btn-secondary" type="button">Simulate Restart</button>
+          </div>
+          <p class="hint">Simulate Restart backdates the stored restart token so verify-restart unlock works again without rebooting. Rebuild the companion after updating it.</p>
+          <p id="dev-restart-status" class="status-box"></p>
+        </section>
+        <hr class="section-divider" />
+        <section class="step">
+          <p class="hint">Toast notification tests</p>
+          <div class="btn-row">
+            <button id="btn-toast-5" class="btn btn-secondary">Test 5-Minute Toast</button>
+            <button id="btn-toast-1" class="btn btn-secondary">Test 1-Minute Toast</button>
+          </div>
+          <button id="btn-live-toast" class="btn btn-primary">Start Live 10s Toast Test</button>
+          <p class="hint">When the live 1-minute alarm fires, the toolbar icon blinks orange for 10 seconds (developer mode only) so you can confirm the alarm triggered even if the in-page toast fails.</p>
+          <p id="dev-toast-status" class="status-box"></p>
+        </section>
+        <hr class="section-divider" />
+        <section class="step">
+          <p class="hint">Toggle on to set all categories to 10 seconds remaining, then visit a tracked site to test the block redirect. Toggle off to restore your real remaining time.</p>
+          <button id="btn-toggle-10s-test" class="btn btn-secondary" type="button" aria-pressed="false">10s Block Test: Off</button>
+          <p id="dev-10s-test-status" class="status-box"></p>
+        </section>
+        <hr class="section-divider" />
+        <section class="step">
+          <p class="hint">Hold the button to preview the red toolbar icon.</p>
+          <button id="btn-hold-red-icon" class="btn btn-secondary" type="button">Hold for Red Icon</button>
+          <p id="dev-icon-status" class="status-box"></p>
+        </section>
+        <button id="btn-disable-dev" class="btn btn-ghost" type="button">Disable Developer Mode</button>
+      </div>
+    </section>
+  </main>
+
+  <div id="unlock-modal" class="modal" hidden>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Unlock Settings</h2>
+        <button id="btn-close-unlock" class="modal-close" type="button" aria-label="Close unlock dialog">&times;</button>
+      </div>
+      <div class="modal-body stack">
+        <section class="step">
+          <p class="step-label">Step 1: Restart your laptop, then click verify.</p>
+          <button id="btn-verify-restart-unlock" class="btn btn-primary" type="button">Verify Restart</button>
+          <p id="restart-unlock-status" class="status-box" aria-live="polite"></p>
+        </section>
+        <hr class="section-divider" />
+        <section class="step">
+          <p class="step-label">Step 2: Type the 100-character string exactly (no backspace). Type <code>dev</code> to bypass.</p>
+          <div
+            id="unlock-challenge"
+            class="challenge-combined"
+            tabindex="-1"
+            role="textbox"
+            aria-label="Typing challenge"
+            aria-disabled="true"
+            aria-live="polite"
+            spellcheck="false"
+          ></div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <div id="page-toast" class="page-toast" hidden role="status" aria-live="polite">
+    <div class="page-toast-body">
+      <p id="page-toast-title" class="page-toast-title" hidden>WebWarden</p>
+      <p id="page-toast-message" class="page-toast-message"></p>
+    </div>
+    <button id="page-toast-dismiss" class="page-toast-dismiss" type="button">OK</button>
+  </div>
+
+  <script type="module" src="options.js"></script>
+</body>
+</html>

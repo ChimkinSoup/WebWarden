@@ -1,0 +1,63 @@
+{
+  "hostName": "com.webwarden.companion",
+  "version": 1,
+  "messageTypes": {
+    "PING": {
+      "direction": "extension_to_companion",
+      "request": {},
+      "response": { "ok": true, "version": "string" }
+    },
+    "GET_STATE": {
+      "direction": "extension_to_companion",
+      "request": {},
+      "response": { "settings": "SettingsObject" }
+    },
+    "SYNC_SESSION": {
+      "direction": "extension_to_companion",
+      "request": {
+        "categoryId": "string",
+        "domain": "string",
+        "deltaMs": "number",
+        "timestamp": "number"
+      },
+      "response": { "ok": true, "remainingMs": "number" }
+    },
+    "VERIFY_RESTART": {
+      "direction": "extension_to_companion",
+      "request": {},
+      "response": { "granted": "boolean", "bootTimeMs": "number" }
+    },
+    "SETTINGS_UPDATE": {
+      "direction": "extension_to_companion",
+      "request": {
+        "settings": "SettingsObject",
+        "frictionToken": "string|null"
+      },
+      "response": { "ok": "boolean", "settings": "SettingsObject" }
+    },
+    "GET_ANALYTICS": {
+      "direction": "extension_to_companion",
+      "request": {},
+      "response": { "analytics": "AnalyticsObject" }
+    },
+    "STATE_PUSH": {
+      "direction": "companion_to_extension",
+      "payload": { "settings": "SettingsObject" }
+    },
+    "GRANT_EMERGENCY_PAUSE": {
+      "direction": "extension_to_companion",
+      "request": { "categoryId": "string" },
+      "response": { "ok": "boolean", "remainingMs": "number" }
+    },
+    "GRANT_RESTART_TIME": {
+      "direction": "extension_to_companion",
+      "request": { "categoryId": "string" },
+      "response": { "ok": "boolean", "remainingMs": "number" }
+    },
+    "GRANT_BEDTIME_CHALLENGE": {
+      "direction": "extension_to_companion",
+      "request": { "categoryId": "string" },
+      "response": { "ok": "boolean", "remainingMs": "number" }
+    }
+  }
+}

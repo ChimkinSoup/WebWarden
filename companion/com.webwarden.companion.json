@@ -1,0 +1,7 @@
+{
+  "name": "com.webwarden.companion",
+  "description": "WebWarden native messaging host",
+  "path": "PLACEHOLDER_EXE_PATH",
+  "type": "stdio",
+  "allowed_origins": ["chrome-extension://PLACEHOLDER_EXTENSION_ID/"]
+}

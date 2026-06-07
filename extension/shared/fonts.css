@@ -1,0 +1,51 @@
+@font-face {
+  font-family: 'Iosevka Aile';
+  src: url('./fonts/IosevkaAile-Regular.ttc') format('truetype');
+  font-weight: 100 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Iosevka Aile';
+  src: url('./fonts/IosevkaAile-SemiBold.ttc') format('truetype');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Iosevka Aile';
+  src: url('./fonts/IosevkaAile-Bold.ttc') format('truetype');
+  font-weight: 700 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+body {
+  font-family: var(--font-sans);
+}
+
+input,
+textarea,
+select,
+button {
+  font-family: var(--font-sans);
+}
+
+input::placeholder,
+textarea::placeholder {
+  font-family: var(--font-sans);
+  color: var(--text-muted);
+  opacity: 1;
+}
+
+code,
+.challenge-display,
+.challenge-input,
+.analytics,
+.debug-content,
+.status-box,
+.site-list-readonly li {
+  font-family: var(--font-sans);
+}

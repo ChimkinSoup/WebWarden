@@ -1,0 +1,62 @@
+{
+  "manifest_version": 3,
+  "name": "WebWarden",
+  "version": "0.1.0",
+  "description": "Enforce screentime limits with category-based blocking and a Windows companion app.",
+  "icons": {
+    "16": "assets/icons/icon16.png",
+    "48": "assets/icons/icon48.png",
+    "128": "assets/icons/icon128.png"
+  },
+  "permissions": [
+    "declarativeNetRequest",
+    "declarativeNetRequestWithHostAccess",
+    "storage",
+    "alarms",
+    "idle",
+    "tabs",
+    "scripting",
+    "nativeMessaging",
+    "notifications"
+  ],
+  "host_permissions": ["<all_urls>"],
+  "background": {
+    "service_worker": "background/service-worker.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "WebWarden",
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "assets/icons/icon16.png",
+      "48": "assets/icons/icon48.png"
+    }
+  },
+  "options_ui": {
+    "page": "options/options.html",
+    "open_in_tab": true
+  },
+  "declarative_net_request": {
+    "rule_resources": []
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content/time-toast.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "shared/tokens.css",
+        "shared/fonts.css",
+        "shared/time-toast.css",
+        "shared/fonts/IosevkaAile-Regular.ttc",
+        "shared/fonts/IosevkaAile-SemiBold.ttc",
+        "shared/fonts/IosevkaAile-Bold.ttc"
+      ],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+node_modules/
+dist/
+build/
+companion/build/
+companion/out/
+*.exe
+*.obj
+*.o
+*.log
+.vscode/
+.idea/
+*.user
+CMakeCache.txt
+CMakeFiles/
+*.vcxproj.user
+coverage/
+.DS_Store

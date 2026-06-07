@@ -1,0 +1,18 @@
+{
+  "name": "webwarden",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Chrome extension + Windows companion for screentime enforcement",
+  "scripts": {
+    "test:ext": "vitest run",
+    "test:ext:watch": "vitest",
+    "build:companion": "powershell -ExecutionPolicy Bypass -File scripts/build-companion.ps1",
+    "install:native-host": "powershell -ExecutionPolicy Bypass -File scripts/install-native-host.ps1",
+    "install:fonts": "powershell -ExecutionPolicy Bypass -File scripts/install-fonts.ps1",
+    "generate:icons": "node scripts/generate-icons.js",
+    "postinstall": "node scripts/generate-icons.js"
+  },
+  "devDependencies": {
+    "vitest": "^3.2.4"
+  }
+}

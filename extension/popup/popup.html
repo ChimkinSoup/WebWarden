@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WebWarden</title>
+  <link rel="stylesheet" href="../shared/tokens.css" />
+  <link rel="stylesheet" href="../shared/fonts.css" />
+  <link rel="stylesheet" href="../shared/layout.css" />
+  <link rel="stylesheet" href="../shared/buttons.css" />
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <header class="header">
+    <div class="title-row">
+      <h1>WebWarden</h1>
+      <span
+        id="tracking-indicator"
+        class="status-dot idle"
+        role="status"
+        aria-label="Time not being tracked"
+        title="Time not being tracked"
+      ></span>
+    </div>
+  </header>
+
+  <div id="guard-notice" class="guard-notice" hidden></div>
+
+  <section class="categories">
+    <h2>Remaining today</h2>
+    <ul id="category-list" class="category-list"></ul>
+  </section>
+
+  <footer class="footer">
+    <button id="btn-open-settings" class="btn btn-primary" type="button">Open Settings</button>
+  </footer>
+
+  <script type="module" src="popup.js"></script>
+</body>
+</html>

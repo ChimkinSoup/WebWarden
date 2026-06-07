@@ -1,0 +1,98 @@
+.page-toast-host-inner {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  font-family: var(--font-sans);
+}
+
+.page-toast {
+  position: fixed;
+  left: 50%;
+  bottom: var(--space-6);
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-width: min(420px, calc(100vw - 2 * var(--space-6)));
+  max-width: calc(100vw - 2 * var(--space-6));
+  padding: var(--space-4) var(--space-5);
+  background: var(--surface);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+  transform: translate(-50%, calc(100% + var(--space-6)));
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    transform 0.28s ease,
+    opacity 0.28s ease;
+}
+
+.page-toast.is-visible {
+  transform: translate(-50%, 0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.page-toast-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.page-toast-title {
+  margin: 0 0 var(--space-1);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+}
+
+.page-toast-message {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.45;
+}
+
+.page-toast-success {
+  border-color: var(--success);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(74, 222, 128, 0.15);
+}
+
+.page-toast-success .page-toast-message {
+  color: var(--success);
+}
+
+.page-toast-error {
+  border-color: var(--danger);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(248, 113, 113, 0.15);
+}
+
+.page-toast-error .page-toast-message {
+  color: #fecaca;
+}
+
+.page-toast-warning {
+  border-color: var(--accent);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(74, 158, 255, 0.18);
+}
+
+.page-toast-warning .page-toast-message {
+  color: var(--text);
+}
+
+.page-toast-dismiss {
+  flex-shrink: 0;
+  padding: var(--space-2) var(--space-3);
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+}
+
+.page-toast-dismiss:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.06);
+}
