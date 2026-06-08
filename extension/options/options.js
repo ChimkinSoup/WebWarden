@@ -35,8 +35,13 @@ async function init() {
 }
 
 function bindRuntimeMessages() {
+  window.addEventListener('webwarden-show-toast', (event) => {
+    const detail = /** @type {CustomEvent<{ message: string, variant?: string }> } */ (event).detail;
+    showPageToast(detail.message, detail.variant || 'warning');
+  });
+
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-    if (message.type !== 'SHOW_TIME_TOAST') return;
+    if (message.type !== 'SHOW_TIME_TOAST') return false;
     showPageToast(message.message, message.variant || 'warning');
     sendResponse({ ok: true });
     return true;
@@ -191,6 +196,8 @@ function bindEvents() {
   document.getElementById('btn-toast-1').addEventListener('click', () => showDevToast(1));
   document.getElementById('btn-live-toast').addEventListener('click', startLiveToastTest);
   document.getElementById('btn-toggle-10s-test').addEventListener('click', toggleTenSecondBlockTest);
+  document.getElementById('btn-reset-emergency-pause').addEventListener('click', resetEmergencyPauseDev);
+  bindDevOrangeIconButton();
   bindDevIconHoldButton();
   document.getElementById('page-toast-dismiss').addEventListener('click', hidePageToast);
 
@@ -449,13 +456,10 @@ async function showDevToast(minutes) {
   const status = document.getElementById('dev-toast-status');
   const resp = await chrome.runtime.sendMessage({ type: 'DEV_SHOW_TOAST', minutes });
   if (resp.ok) {
-    if (resp.message) {
-      showPageToast(resp.message, 'warning');
-    }
-    status.textContent = `Showed ${minutes}-minute test toast.`;
+    status.textContent = `Sent ${minutes}-minute Windows notification test.`;
     status.className = 'status-box success';
   } else {
-    status.textContent = resp.error || 'Failed to show toast';
+    status.textContent = resp.error || 'Failed to show notification';
     status.className = 'status-box error';
   }
 }
@@ -470,6 +474,20 @@ async function startLiveToastTest() {
     status.className = resp.consuming ? 'status-box success' : 'status-box';
   } else {
     status.textContent = resp.error || 'Live test failed';
+    status.className = 'status-box error';
+  }
+}
+
+async function resetEmergencyPauseDev() {
+  const status = document.getElementById('dev-emergency-pause-status');
+  status.textContent = 'Resetting emergency pause…';
+  status.className = 'status-box';
+  const resp = await chrome.runtime.sendMessage({ type: 'DEV_RESET_EMERGENCY_PAUSE' });
+  if (resp.ok) {
+    status.textContent = 'Emergency pause reset. Reload the block page to see the button again.';
+    status.className = 'status-box success';
+  } else {
+    status.textContent = resp.error || 'Reset failed';
     status.className = 'status-box error';
   }
 }
@@ -547,6 +565,52 @@ async function simulateRestart() {
 
   status.textContent = formatRestartStatus(resp);
   status.className = 'status-box success';
+}
+
+function bindDevOrangeIconButton() {
+  const btn = document.getElementById('btn-toggle-orange-icon');
+  const status = document.getElementById('dev-icon-status');
+  if (!btn) return;
+
+  let previewOn = false;
+
+  btn.addEventListener('click', async () => {
+    previewOn = !previewOn;
+    btn.setAttribute('aria-pressed', previewOn ? 'true' : 'false');
+    btn.textContent = previewOn ? 'Orange Icon Preview: On' : 'Orange Icon Preview: Off';
+    btn.classList.toggle('btn-primary', previewOn);
+    btn.classList.toggle('btn-secondary', !previewOn);
+
+    try {
+      const resp = await chrome.runtime.sendMessage({
+        type: 'DEV_SET_ORANGE_ICON_OVERRIDE',
+        forced: previewOn,
+      });
+      if (!resp?.ok) {
+        previewOn = false;
+        btn.setAttribute('aria-pressed', 'false');
+        btn.textContent = 'Orange Icon Preview: Off';
+        btn.classList.remove('btn-primary');
+        btn.classList.add('btn-secondary');
+        if (status) {
+          status.textContent = resp?.error || 'Failed to update toolbar icon';
+          status.className = 'status-box error';
+        }
+        return;
+      }
+      if (status) {
+        status.textContent = previewOn
+          ? 'Toolbar icon is orange (same as under 5 minutes remaining).'
+          : '';
+        status.className = previewOn ? 'status-box success' : 'status-box';
+      }
+    } catch (e) {
+      if (status) {
+        status.textContent = e.message || 'Failed to reach extension background';
+        status.className = 'status-box error';
+      }
+    }
+  });
 }
 
 function bindDevIconHoldButton() {

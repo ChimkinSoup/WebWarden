@@ -3,6 +3,7 @@ import { generateChallenge, validateChar } from '../lib/friction.js';
 import { canUseEmergencyPause, canUseRestart } from '../lib/block-logic.js';
 import { isBedtimeActive, isHardcoreBedtime } from '../lib/bedtime.js';
 import { isProductivitySite } from '../lib/categories.js';
+import { bindExtensionPageToast } from '../lib/extension-page-toast.js';
 
 const params = new URLSearchParams(location.search);
 const categoryId = params.get('category') || '';
@@ -16,6 +17,7 @@ let challenge = generateChallenge();
 let typed = '';
 
 async function init() {
+  bindExtensionPageToast();
   const resp = await chrome.runtime.sendMessage({ type: 'GET_SETTINGS' });
   settings = resp.settings;
 
@@ -210,7 +212,8 @@ function setupButtons() {
         categoryId,
       });
       if (resp.ok) {
-        location.href = 'https://www.google.com';
+        btnEmergency.disabled = true;
+        btnEmergency.textContent = 'Restoring tabs…';
       } else {
         alert(resp.error || 'Emergency pause unavailable');
       }

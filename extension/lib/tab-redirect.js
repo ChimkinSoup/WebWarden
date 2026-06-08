@@ -2,6 +2,10 @@ import { findCategoryForUrl } from './categories.js';
 import { getBlockStatus } from './block-logic.js';
 import { extractHostname } from './url-match.js';
 
+const BLOCKED_TAB_RETURNS_KEY = 'webwarden_blocked_tab_returns';
+
+export const DEFAULT_NEW_TAB_URL = 'chrome://newtab/';
+
 /**
  * @param {string|null|undefined} categoryId
  * @param {string|null|undefined} domain
@@ -13,6 +17,49 @@ export function buildTimeUpBlockedUrl(categoryId, domain, runtimeApi) {
   if (categoryId) q.set('category', categoryId);
   if (domain) q.set('domain', domain);
   return runtime.getURL(`blocked/blocked.html?${q.toString()}`);
+}
+
+/**
+ * @param {typeof chrome.storage.session|null|undefined} [storageApi]
+ * @returns {Promise<Record<string, string>>}
+ */
+async function loadBlockedTabReturns(storageApi) {
+  const api = storageApi || (typeof chrome !== 'undefined' ? chrome.storage?.session : null);
+  if (!api) return {};
+
+  const result = await api.get(BLOCKED_TAB_RETURNS_KEY);
+  return result[BLOCKED_TAB_RETURNS_KEY] || {};
+}
+
+/**
+ * @param {number} tabId
+ * @param {string} returnUrl
+ * @param {typeof chrome.storage.session|null|undefined} [storageApi]
+ */
+export async function rememberBlockedTabReturnUrl(tabId, returnUrl, storageApi) {
+  if (!returnUrl || returnUrl.startsWith('chrome-extension://')) return;
+
+  const api = storageApi || (typeof chrome !== 'undefined' ? chrome.storage?.session : null);
+  if (!api) return;
+
+  const returns = await loadBlockedTabReturns(api);
+  returns[String(tabId)] = returnUrl;
+  await api.set({ [BLOCKED_TAB_RETURNS_KEY]: returns });
+}
+
+/**
+ * @param {number} tabId
+ * @param {typeof chrome.storage.session|null|undefined} [storageApi]
+ */
+export async function forgetBlockedTabReturn(tabId, storageApi) {
+  const api = storageApi || (typeof chrome !== 'undefined' ? chrome.storage?.session : null);
+  if (!api) return;
+
+  const returns = await loadBlockedTabReturns(api);
+  if (!(String(tabId) in returns)) return;
+
+  delete returns[String(tabId)];
+  await api.set({ [BLOCKED_TAB_RETURNS_KEY]: returns });
 }
 
 /**
@@ -79,8 +126,9 @@ export async function collectTrackedTabIds(settings, tabsApi) {
  * @param {import('./constants.js').Settings} settings
  * @param {typeof chrome.tabs|null} [tabsApi]
  * @param {typeof chrome.runtime|null} [runtimeApi]
+ * @param {typeof chrome.storage.session|null} [storageApi]
  */
-export async function redirectTabsWithExhaustedTime(settings, tabsApi, runtimeApi) {
+export async function redirectTabsWithExhaustedTime(settings, tabsApi, runtimeApi, storageApi) {
   const tabs = tabsApi || (typeof chrome !== 'undefined' ? chrome.tabs : null);
   const runtime = runtimeApi || (typeof chrome !== 'undefined' ? chrome.runtime : null);
   if (!tabs?.update || !runtime?.getURL) return;
@@ -88,7 +136,7 @@ export async function redirectTabsWithExhaustedTime(settings, tabsApi, runtimeAp
   const tabIds = await collectTrackedTabIds(settings, tabs);
 
   for (const tabId of tabIds) {
-    await redirectTabIfBlocked(tabId, settings, tabs, runtime);
+    await redirectTabIfBlocked(tabId, settings, tabs, runtime, storageApi);
   }
 }
 
@@ -98,9 +146,10 @@ export async function redirectTabsWithExhaustedTime(settings, tabsApi, runtimeAp
  * @param {import('./constants.js').Settings} settings
  * @param {typeof chrome.tabs|null} [tabsApi]
  * @param {typeof chrome.runtime|null} [runtimeApi]
+ * @param {typeof chrome.storage.session|null} [storageApi]
  * @returns {Promise<boolean>}
  */
-export async function redirectTabIfBlocked(tabId, settings, tabsApi, runtimeApi) {
+export async function redirectTabIfBlocked(tabId, settings, tabsApi, runtimeApi, storageApi) {
   const tabs = tabsApi || (typeof chrome !== 'undefined' ? chrome.tabs : null);
   const runtime = runtimeApi || (typeof chrome !== 'undefined' ? chrome.runtime : null);
   if (!tabs?.get || !tabs?.update || !runtime?.getURL) return false;
@@ -122,9 +171,70 @@ export async function redirectTabIfBlocked(tabId, settings, tabsApi, runtimeApi)
   const blockedUrl = buildTimeUpBlockedUrl(status.categoryId, domain, runtime);
 
   try {
+    await rememberBlockedTabReturnUrl(tabId, url, storageApi);
     await tabs.update(tabId, { url: blockedUrl });
     return true;
   } catch {
     return false;
   }
+}
+
+/**
+ * Restore tabs on the time-up block page after emergency pause.
+ * Uses the saved pre-block URL when available; otherwise opens a new tab page.
+ * @param {string} categoryId
+ * @param {typeof chrome.tabs|null} [tabsApi]
+ * @param {typeof chrome.runtime|null} [runtimeApi]
+ * @param {typeof chrome.storage.session|null} [storageApi]
+ * @returns {Promise<{ tabId: number, url: string }[]>}
+ */
+export async function restoreBlockedTabsAfterEmergencyPause(categoryId, tabsApi, runtimeApi, storageApi) {
+  const tabs = tabsApi || (typeof chrome !== 'undefined' ? chrome.tabs : null);
+  const runtime = runtimeApi || (typeof chrome !== 'undefined' ? chrome.runtime : null);
+  const storage = storageApi || (typeof chrome !== 'undefined' ? chrome.storage?.session : null);
+  if (!tabs?.query || !tabs?.update || !runtime?.getURL) return [];
+
+  const extensionOrigin = runtime.getURL('');
+  /** @type {{ id?: number, url?: string }[]} */
+  let blockedTabs = [];
+
+  try {
+    blockedTabs = await tabs.query({ url: `${extensionOrigin}blocked/blocked.html*` });
+  } catch {
+    const allTabs = await tabs.query({});
+    blockedTabs = allTabs.filter((tab) => tab.url?.includes('/blocked/blocked.html'));
+  }
+
+  const returns = await loadBlockedTabReturns(storage);
+  /** @type {{ tabId: number, url: string }[]} */
+  const restored = [];
+
+  for (const tab of blockedTabs) {
+    if (tab.id === undefined || !tab.url) continue;
+
+    let params;
+    try {
+      params = new URL(tab.url).searchParams;
+    } catch {
+      continue;
+    }
+
+    if (params.get('reason') !== 'time-up') continue;
+    if (categoryId && (params.get('category') || '') !== categoryId) continue;
+
+    const returnUrl = returns[String(tab.id)] || DEFAULT_NEW_TAB_URL;
+    try {
+      await tabs.update(tab.id, { url: returnUrl });
+      restored.push({ tabId: tab.id, url: returnUrl });
+      delete returns[String(tab.id)];
+    } catch {
+      /* ignore individual tab failures */
+    }
+  }
+
+  if (storage) {
+    await storage.set({ [BLOCKED_TAB_RETURNS_KEY]: returns });
+  }
+
+  return restored;
 }

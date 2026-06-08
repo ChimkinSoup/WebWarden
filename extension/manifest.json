@@ -4,9 +4,8 @@
   "version": "0.1.0",
   "description": "Enforce screentime limits with category-based blocking and a Windows companion app.",
   "icons": {
-    "16": "assets/icons/icon16.png",
-    "48": "assets/icons/icon48.png",
-    "128": "assets/icons/icon128.png"
+    "16": "assets/icons/Blue_Shield-16x16.png",
+    "48": "assets/icons/Blue_Shield-48x48.png"
   },
   "permissions": [
     "declarativeNetRequest",
@@ -28,8 +27,9 @@
     "default_title": "WebWarden",
     "default_popup": "popup/popup.html",
     "default_icon": {
-      "16": "assets/icons/icon16.png",
-      "48": "assets/icons/icon48.png"
+      "16": "assets/icons/Blue_Shield-16x16.png",
+      "32": "assets/icons/Blue_Shield-32x32.png",
+      "48": "assets/icons/Blue_Shield-48x48.png"
     }
   },
   "options_ui": {
@@ -39,13 +39,6 @@
   "declarative_net_request": {
     "rule_resources": []
   },
-  "content_scripts": [
-    {
-      "matches": ["<all_urls>"],
-      "js": ["content/time-toast.js"],
-      "run_at": "document_idle"
-    }
-  ],
   "web_accessible_resources": [
     {
       "resources": [

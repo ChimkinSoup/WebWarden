@@ -14,14 +14,14 @@ import {
   getEffectiveRemainingMs,
   checkAndHandleExpiredSession,
 } from '../lib/time-engine.js';
-import { setDevTenSecondTest, clearDevTenSecondTestIfActive, clearDevLiveToastTestIfActive, enableDevLiveToastTest, finalizeDeveloperModeSave, DEV_TEN_SECOND_TEST_MS } from '../lib/dev-time-test.js';
-import { toastMinutesForAlarm, showRemainingToast, formatRemainingToastMessage } from '../lib/alarms.js';
+import { setDevTenSecondTest, clearDevTenSecondTestIfActive, clearDevLiveToastTestIfActive, enableDevLiveToastTest, finalizeDeveloperModeSave, resetEmergencyPauseForDev, DEV_TEN_SECOND_TEST_MS } from '../lib/dev-time-test.js';
+import { toastMinutesForAlarm, showRemainingToast } from '../lib/alarms.js';
 import { addCategoryTime } from '../lib/storage.js';
 import { localDateKey, MS } from '../lib/constants.js';
 import { getBlockStatus, collectBlockedPatterns } from '../lib/block-logic.js';
 import { isBedtimeActive } from '../lib/bedtime.js';
-import { refreshActionIcon, setDevIconOverride, startDevOneMinuteToastIconBlink } from '../lib/action-icon.js';
-import { redirectTabIfBlocked, redirectTabsWithExhaustedTime } from '../lib/tab-redirect.js';
+import { refreshActionIcon, setDevIconOverride, setDevOrangeIconOverride } from '../lib/action-icon.js';
+import { redirectTabIfBlocked, redirectTabsWithExhaustedTime, restoreBlockedTabsAfterEmergencyPause, forgetBlockedTabReturn } from '../lib/tab-redirect.js';
 import { normalizeRestartCheckResponse } from '../lib/restart-response.js';
 
 async function bootstrap() {
@@ -71,7 +71,10 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
   }
 });
 chrome.tabs.onCreated.addListener(() => onTabsChanged());
-chrome.tabs.onRemoved.addListener(() => onTabsChanged());
+chrome.tabs.onRemoved.addListener((tabId) => {
+  forgetBlockedTabReturn(tabId).catch(() => {});
+  onTabsChanged();
+});
 chrome.idle.onStateChanged.addListener((state) => handleIdleStateChange(state));
 
 chrome.alarms.onAlarm.addListener(async (alarm) => {
@@ -102,12 +105,8 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
     const category = settings.categories.find((c) => c.id === state.activeCategoryId);
     await showRemainingToast(minutes, {
       categoryName: category?.name ?? null,
-      tabId: state.activeTabId,
-      domain: state.activeDomain,
     });
-    if (minutes === 1 && settings.developerMode) {
-      startDevOneMinuteToastIconBlink();
-    }
+    await refreshActionIcon(settings, null, null, { force: true, session: state });
   }
 });
 
@@ -220,6 +219,7 @@ async function handleRuntimeMessage(message) {
       settings.developerMode = Boolean(message.enabled);
       if (!settings.developerMode) {
         setDevIconOverride(false);
+        setDevOrangeIconOverride(false);
         await stopConsumption();
         clearDevTenSecondTestIfActive(settings);
         clearDevLiveToastTestIfActive(settings);
@@ -265,10 +265,10 @@ async function handleRuntimeMessage(message) {
       if (minutes !== 5 && minutes !== 1) {
         return { ok: false, error: 'Supported toast tests: 5 or 1 minute' };
       }
-      return {
-        ok: true,
-        message: formatRemainingToastMessage(minutes, settings.categories[0]?.name ?? null),
-      };
+      await showRemainingToast(minutes, {
+        categoryName: settings.categories[0]?.name ?? null,
+      });
+      return { ok: true };
     }
 
     case 'DEV_START_LIVE_TOAST': {
@@ -304,6 +304,30 @@ async function handleRuntimeMessage(message) {
       setDevIconOverride(Boolean(message.forced));
       await refreshActionIcon(settings, null, null, { force: true });
       return { ok: true, forced: Boolean(message.forced) };
+    }
+
+    case 'DEV_SET_ORANGE_ICON_OVERRIDE': {
+      const settings = await loadSettings();
+      if (!settings.developerMode) {
+        return { ok: false, error: 'Developer mode required' };
+      }
+      setDevOrangeIconOverride(Boolean(message.forced));
+      await refreshActionIcon(settings, null, null, { force: true });
+      return { ok: true, forced: Boolean(message.forced) };
+    }
+
+    case 'DEV_RESET_EMERGENCY_PAUSE': {
+      const settings = await loadSettings();
+      if (!settings.developerMode) {
+        return { ok: false, error: 'Developer mode required' };
+      }
+      resetEmergencyPauseForDev(settings);
+      await saveSettings(settings);
+      try {
+        await sendMessage({ type: 'SETTINGS_UPDATE', settings, frictionToken: null });
+      } catch { /* local reset still applied */ }
+      await refreshDnrRules(settings, null, chrome.runtime.id);
+      return { ok: true };
     }
 
     case 'DEV_TOGGLE_TEN_SECOND_TEST': {
@@ -379,6 +403,7 @@ async function handleRuntimeMessage(message) {
           return s;
         });
         await refreshDnrRules(await loadSettings(), null, chrome.runtime.id);
+        await restoreBlockedTabsAfterEmergencyPause(message.categoryId);
       }
       return resp;
     }

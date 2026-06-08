@@ -112,3 +112,13 @@ export function finalizeDeveloperModeSave(settings) {
   }
   return settings;
 }
+
+/**
+ * Clear today's emergency pause usage so it can be used again (developer testing).
+ * @param {import('./constants.js').Settings} settings
+ */
+export function resetEmergencyPauseForDev(settings) {
+  settings.emergencyPauseUsedDate = null;
+  settings.emergencyPauseCategoryId = null;
+  return settings;
+}

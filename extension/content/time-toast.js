@@ -91,7 +91,7 @@ globalThis.__webwardenShowToast = showToast;
 if (!globalThis.__webwardenTimeToastListener) {
   globalThis.__webwardenTimeToastListener = true;
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-    if (message.type !== 'SHOW_TIME_TOAST') return;
+    if (message.type !== 'SHOW_TIME_TOAST') return false;
     showToast(message.message, message.variant || 'warning');
     sendResponse({ ok: true });
     return true;

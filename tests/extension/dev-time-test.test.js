@@ -8,6 +8,7 @@ import {
   disableDevLiveToastTest,
   clearDevLiveToastTestIfActive,
   finalizeDeveloperModeSave,
+  resetEmergencyPauseForDev,
   DEV_TEN_SECOND_TEST_MS,
   DEV_LIVE_TOAST_TEST_MS,
 } from '../../extension/lib/dev-time-test.js';
@@ -104,5 +105,16 @@ describe('dev-time-test', () => {
     expect(settings.devLiveToastTest).toBe(false);
     expect(settings.devTenSecondTest).toBe(false);
     expect(settings.categories[0].remainingMs).toBe(60 * MS.MINUTE);
+  });
+
+  it('resetEmergencyPauseForDev clears today emergency pause usage', () => {
+    const settings = createDefaultSettings();
+    settings.emergencyPauseUsedDate = '2026-06-07';
+    settings.emergencyPauseCategoryId = 'default';
+
+    resetEmergencyPauseForDev(settings);
+
+    expect(settings.emergencyPauseUsedDate).toBeNull();
+    expect(settings.emergencyPauseCategoryId).toBeNull();
   });
 });

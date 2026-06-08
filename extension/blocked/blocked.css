@@ -115,3 +115,7 @@ body {
 .blocked-modal .modal-header h2 {
   text-align: left;
 }
+
+#page-toast {
+  z-index: 2000;
+}

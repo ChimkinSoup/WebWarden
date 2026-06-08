@@ -3,14 +3,27 @@ import {
   wouldTrackTime,
   resetActionIconState,
   setDevIconOverride,
+  setDevOrangeIconOverride,
+  resolveActionIconState,
+  getMinimumDisplayRemainingMs,
+  LOW_TIME_ICON_THRESHOLD_MS,
 } from '../../extension/lib/action-icon.js';
-import { createDefaultSettings } from '../../extension/lib/constants.js';
+import { createDefaultSettings, MS } from '../../extension/lib/constants.js';
 
 beforeEach(() => {
   resetActionIconState();
 });
 
 describe('action-icon', () => {
+  const emptySession = {
+    isConsumingTime: false,
+    activeCategoryId: null,
+    sessionStartMs: null,
+    activeDomain: null,
+    activeTabId: null,
+    sessionBaseRemainingMs: null,
+  };
+
   it('returns true for an active tracked tab', () => {
     const settings = createDefaultSettings();
     const tabs = [{ url: 'https://www.youtube.com/watch?v=abc', active: true }];
@@ -44,10 +57,45 @@ describe('action-icon', () => {
     expect(wouldTrackTime(tabs, settings)).toBe(false);
   });
 
-  it('setDevIconOverride clears cached icon state', () => {
-    setDevIconOverride(true);
-    setDevIconOverride(false);
-    resetActionIconState();
-    expect(true).toBe(true);
+  it('resolves blue when idle with plenty of time remaining', () => {
+    const settings = createDefaultSettings();
+    expect(resolveActionIconState(settings, emptySession, [])).toBe('blue');
+  });
+
+  it('resolves red when actively tracking time', () => {
+    const settings = createDefaultSettings();
+    const tabs = [{ url: 'https://www.youtube.com/watch?v=abc', active: true }];
+    expect(resolveActionIconState(settings, emptySession, tabs)).toBe('red');
+  });
+
+  it('resolves orange when five minutes or less remain', () => {
+    const settings = createDefaultSettings();
+    settings.categories[0].remainingMs = 5 * MS.MINUTE;
+    expect(resolveActionIconState(settings, emptySession, [])).toBe('orange');
+  });
+
+  it('prefers orange over red when under five minutes while tracking', () => {
+    const settings = createDefaultSettings();
+    settings.categories[0].remainingMs = 3 * MS.MINUTE;
+    const tabs = [{ url: 'https://www.youtube.com/watch?v=abc', active: true }];
+    expect(resolveActionIconState(settings, emptySession, tabs)).toBe('orange');
+  });
+
+  it('uses dev orange override through the same orange state', () => {
+    const settings = createDefaultSettings();
+    setDevOrangeIconOverride(true);
+    expect(resolveActionIconState(settings, emptySession, [])).toBe('orange');
+  });
+
+  it('computes minimum display remaining across categories', () => {
+    const settings = createDefaultSettings();
+    settings.categories[0].remainingMs = 90 * MS.MINUTE;
+    settings.categories.push({
+      ...settings.categories[0],
+      id: 'social',
+      remainingMs: 2 * MS.MINUTE,
+    });
+    expect(getMinimumDisplayRemainingMs(settings, emptySession)).toBe(2 * MS.MINUTE);
+    expect(LOW_TIME_ICON_THRESHOLD_MS).toBe(5 * MS.MINUTE);
   });
 });

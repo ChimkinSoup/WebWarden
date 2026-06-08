@@ -1,33 +1,44 @@
 import { isTrackedUrl, findCategoryForUrl } from './categories.js';
 import { loadSettings } from './storage.js';
+import { getEffectiveRemainingMs, getSessionState, restoreSessionFromStorage } from './time-engine.js';
+import { MS } from './constants.js';
 
-const DEFAULT_ICON = {
-  16: 'assets/icons/icon16.png',
-  48: 'assets/icons/icon48.png',
-  128: 'assets/icons/icon128.png',
+/** @typedef {'blue' | 'orange' | 'red'} ActionIconState */
+
+const BLUE_ICON = {
+  16: 'assets/icons/Blue_Shield-16x16.png',
+  32: 'assets/icons/Blue_Shield-32x32.png',
+  48: 'assets/icons/Blue_Shield-48x48.png',
 };
 
-const ACTIVE_ICON = {
-  16: 'assets/icons/icon16-active.png',
-  48: 'assets/icons/icon48-active.png',
-  128: 'assets/icons/icon128-active.png',
+const ORANGE_ICON = {
+  16: 'assets/icons/Orange_Shield-16x16.png',
+  32: 'assets/icons/Orange_Shield-32x32.png',
+  48: 'assets/icons/Orange_Shield-48x48.png',
 };
 
-const BLINK_ICON_SIZES = [16, 48, 128];
-const DEV_TOAST_BLINK_MS = 10_000;
-const DEV_TOAST_BLINK_INTERVAL_MS = 500;
+const RED_ICON = {
+  16: 'assets/icons/Red_Shield-16x16.png',
+  32: 'assets/icons/Red_Shield-32x32.png',
+  48: 'assets/icons/Red_Shield-48x48.png',
+};
 
-/** @type {boolean|null} */
-let lastActiveState = null;
+const ICON_SETS = {
+  blue: BLUE_ICON,
+  orange: ORANGE_ICON,
+  red: RED_ICON,
+};
+
+export const LOW_TIME_ICON_THRESHOLD_MS = 5 * MS.MINUTE;
+
+/** @type {ActionIconState|null} */
+let lastIconState = null;
 
 /** @type {boolean} */
-let devIconOverride = false;
-
-/** @type {ReturnType<typeof setTimeout>|null} */
-let devToastBlinkTimer = null;
+let devRedIconOverride = false;
 
 /** @type {boolean} */
-let devToastBlinkVisible = false;
+let devOrangeIconOverride = false;
 
 /**
  * @param {Record<string, string>} map
@@ -43,42 +54,37 @@ function resolveIconPaths(map) {
 }
 
 /**
- * @param {number} size
- * @returns {ImageData}
+ * @param {import('./constants.js').Settings} settings
+ * @param {import('./time-engine.js').sessionState} session
+ * @returns {number|null}
  */
-export function createOrangeIconImageData(size) {
-  if (typeof OffscreenCanvas !== 'undefined') {
-    const canvas = new OffscreenCanvas(size, size);
-    const ctx = canvas.getContext('2d');
-    if (!ctx) {
-      throw new Error('Canvas context unavailable');
-    }
+export function getMinimumDisplayRemainingMs(settings, session) {
+  if (!settings.categories.length) return null;
 
-    ctx.clearRect(0, 0, size, size);
-    ctx.fillStyle = '#ff8800';
-    ctx.beginPath();
-    ctx.arc(size / 2, size / 2, Math.max(1, size / 2 - 1), 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#ffb347';
-    ctx.beginPath();
-    ctx.arc(size / 2, size / 2, Math.max(1, size / 3), 0, Math.PI * 2);
-    ctx.fill();
+  let min = Infinity;
+  for (const cat of settings.categories) {
+    const remaining = getEffectiveRemainingMs(cat, session);
+    if (remaining < min) min = remaining;
+  }
+  return min === Infinity ? null : min;
+}
 
-    return ctx.getImageData(0, 0, size, size);
+/**
+ * @param {import('./constants.js').Settings} settings
+ * @param {import('./time-engine.js').sessionState} session
+ * @param {{ url?: string, audible?: boolean, active?: boolean }[]} tabs
+ * @returns {ActionIconState}
+ */
+export function resolveActionIconState(settings, session, tabs) {
+  if (devOrangeIconOverride) return 'orange';
+
+  const minRemaining = getMinimumDisplayRemainingMs(settings, session);
+  if (minRemaining !== null && minRemaining > 0 && minRemaining <= LOW_TIME_ICON_THRESHOLD_MS) {
+    return 'orange';
   }
 
-  if (typeof ImageData === 'undefined') {
-    throw new Error('ImageData unavailable');
-  }
-
-  const data = new Uint8ClampedArray(size * size * 4);
-  for (let i = 0; i < data.length; i += 4) {
-    data[i] = 255;
-    data[i + 1] = 136;
-    data[i + 2] = 0;
-    data[i + 3] = 255;
-  }
-  return new ImageData(data, size, size);
+  if (devRedIconOverride || wouldTrackTime(tabs, settings)) return 'red';
+  return 'blue';
 }
 
 /**
@@ -86,14 +92,22 @@ export function createOrangeIconImageData(size) {
  * @param {boolean} forced
  */
 export function setDevIconOverride(forced) {
-  devIconOverride = forced;
-  lastActiveState = null;
+  devRedIconOverride = forced;
+  lastIconState = null;
+}
+
+/**
+ * Force orange toolbar icon (developer preview — same state as low remaining time).
+ * @param {boolean} forced
+ */
+export function setDevOrangeIconOverride(forced) {
+  devOrangeIconOverride = forced;
+  lastIconState = null;
 }
 
 /**
  * Whether screentime would count for active or audible tracked tabs.
- * Matches the time engine: background tabs with no audio do not count.
- * @param {{ url?: string, audible?: boolean }[]} tabs
+ * @param {{ url?: string, audible?: boolean, active?: boolean }[]} tabs
  * @param {import('./constants.js').Settings} settings
  * @returns {boolean}
  */
@@ -107,113 +121,42 @@ export function wouldTrackTime(tabs, settings) {
 }
 
 /**
- * @param {boolean} active
+ * @param {ActionIconState} state
  * @param {typeof chrome.action|null} [actionApi]
  */
-async function applyActionIcon(active, actionApi) {
+async function applyActionIconState(state, actionApi) {
   const action = actionApi || (typeof chrome !== 'undefined' ? chrome.action : null);
   if (!action?.setIcon) return;
 
-  const paths = resolveIconPaths(active ? ACTIVE_ICON : DEFAULT_ICON);
+  const paths = resolveIconPaths(ICON_SETS[state]);
   await action.setIcon({ path: paths });
-  lastActiveState = active;
+  lastIconState = state;
 }
 
 /**
- * @param {typeof chrome.action|null} [actionApi]
- */
-async function applyOrangeActionIcon(actionApi) {
-  const action = actionApi || (typeof chrome !== 'undefined' ? chrome.action : null);
-  if (!action?.setIcon) return;
-
-  /** @type {Record<string, ImageData>} */
-  const imageData = {};
-  for (const size of BLINK_ICON_SIZES) {
-    imageData[String(size)] = createOrangeIconImageData(size);
-  }
-  await action.setIcon({ imageData });
-}
-
-/**
- * Stop the developer 1-minute toast alarm icon blink.
- * @param {typeof chrome.action|null} [actionApi]
- * @param {typeof chrome.tabs|null} [tabsApi]
- */
-export async function stopDevOneMinuteToastIconBlink(actionApi, tabsApi) {
-  if (devToastBlinkTimer) {
-    clearTimeout(devToastBlinkTimer);
-    devToastBlinkTimer = null;
-  }
-  devToastBlinkVisible = false;
-  lastActiveState = null;
-  await refreshActionIcon(null, tabsApi, actionApi, { force: true });
-}
-
-/**
- * Blink the toolbar icon orange when the 1-minute toast alarm fires (developer debug).
- * @param {{ durationMs?: number, intervalMs?: number, actionApi?: typeof chrome.action, tabsApi?: typeof chrome.tabs }} [options]
- */
-export function startDevOneMinuteToastIconBlink(options = {}) {
-  const durationMs = options.durationMs ?? DEV_TOAST_BLINK_MS;
-  const intervalMs = options.intervalMs ?? DEV_TOAST_BLINK_INTERVAL_MS;
-  const actionApi = options.actionApi || (typeof chrome !== 'undefined' ? chrome.action : null);
-  const tabsApi = options.tabsApi || (typeof chrome !== 'undefined' ? chrome.tabs : null);
-  if (!actionApi?.setIcon) return;
-
-  if (devToastBlinkTimer) {
-    clearTimeout(devToastBlinkTimer);
-    devToastBlinkTimer = null;
-  }
-
-  const startedAt = Date.now();
-
-  const tick = async () => {
-    if (Date.now() - startedAt >= durationMs) {
-      await stopDevOneMinuteToastIconBlink(actionApi, tabsApi);
-      return;
-    }
-
-    devToastBlinkVisible = !devToastBlinkVisible;
-    try {
-      if (devToastBlinkVisible) {
-        await applyOrangeActionIcon(actionApi);
-      } else {
-        lastActiveState = null;
-        await refreshActionIcon(null, tabsApi, actionApi, { force: true });
-      }
-    } catch (e) {
-      console.error('WebWarden: failed to blink toolbar icon', e);
-    }
-
-    devToastBlinkTimer = setTimeout(tick, intervalMs);
-  };
-
-  tick();
-}
-
-/**
- * Update toolbar icon when screentime is actively being tracked.
+ * Update toolbar icon from remaining time, tracking state, and dev overrides.
  * @param {import('./constants.js').Settings|null} [settings]
  * @param {typeof chrome.tabs|null} [tabsApi]
  * @param {typeof chrome.action|null} [actionApi]
- * @param {{ force?: boolean }} [options]
+ * @param {{ force?: boolean, session?: import('./time-engine.js').sessionState }} [options]
  */
 export async function refreshActionIcon(settings, tabsApi, actionApi, options = {}) {
-  if (devToastBlinkTimer) return;
-
   const action = actionApi || (typeof chrome !== 'undefined' ? chrome.action : null);
   const tabs = tabsApi || (typeof chrome !== 'undefined' ? chrome.tabs : null);
   if (!action?.setIcon || !tabs?.query) return;
 
   const s = settings || await loadSettings();
+  if (!options.session) {
+    await restoreSessionFromStorage();
+  }
+  const session = options.session || getSessionState();
   const activeTabs = await tabs.query({ active: true });
   const audibleTabs = await tabs.query({ audible: true });
-  const active = devIconOverride || wouldTrackTime([...activeTabs, ...audibleTabs], s);
-
-  if (!options.force && active === lastActiveState) return;
+  const state = resolveActionIconState(s, session, [...activeTabs, ...audibleTabs]);
+  if (!options.force && state === lastIconState) return;
 
   try {
-    await applyActionIcon(active, action);
+    await applyActionIconState(state, action);
   } catch (e) {
     console.error('WebWarden: failed to set toolbar icon', e);
     throw e;
@@ -222,11 +165,9 @@ export async function refreshActionIcon(settings, tabsApi, actionApi, options = 
 
 /** Reset cached state (for tests). */
 export function resetActionIconState() {
-  if (devToastBlinkTimer) {
-    clearTimeout(devToastBlinkTimer);
-    devToastBlinkTimer = null;
-  }
-  devToastBlinkVisible = false;
-  lastActiveState = null;
-  devIconOverride = false;
+  lastIconState = null;
+  devRedIconOverride = false;
+  devOrangeIconOverride = false;
 }
+
+export { BLUE_ICON, ORANGE_ICON, RED_ICON };

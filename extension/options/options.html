@@ -114,13 +114,13 @@
         </section>
         <hr class="section-divider" />
         <section class="step">
-          <p class="hint">Toast notification tests</p>
+          <p class="hint">Toast notification tests (Windows notifications)</p>
           <div class="btn-row">
-            <button id="btn-toast-5" class="btn btn-secondary">Test 5-Minute Toast</button>
-            <button id="btn-toast-1" class="btn btn-secondary">Test 1-Minute Toast</button>
+            <button id="btn-toast-5" class="btn btn-secondary">Test 5-Minute Notification</button>
+            <button id="btn-toast-1" class="btn btn-secondary">Test 1-Minute Notification</button>
           </div>
           <button id="btn-live-toast" class="btn btn-primary">Start Live 10s Toast Test</button>
-          <p class="hint">When the live 1-minute alarm fires, the toolbar icon blinks orange for 10 seconds (developer mode only) so you can confirm the alarm triggered even if the in-page toast fails.</p>
+          <p class="hint">Live test sets remaining to 70s. The 1-minute warning uses a Windows notification. The toolbar icon turns orange when any category has under 5 minutes left.</p>
           <p id="dev-toast-status" class="status-box"></p>
         </section>
         <hr class="section-divider" />
@@ -131,9 +131,18 @@
         </section>
         <hr class="section-divider" />
         <section class="step">
-          <p class="hint">Hold the button to preview the red toolbar icon.</p>
-          <button id="btn-hold-red-icon" class="btn btn-secondary" type="button">Hold for Red Icon</button>
+          <p class="hint">Preview toolbar icon colors.</p>
+          <div class="btn-row">
+            <button id="btn-toggle-orange-icon" class="btn btn-secondary" type="button" aria-pressed="false">Orange Icon Preview: Off</button>
+            <button id="btn-hold-red-icon" class="btn btn-secondary" type="button">Hold for Red Icon</button>
+          </div>
           <p id="dev-icon-status" class="status-box"></p>
+        </section>
+        <hr class="section-divider" />
+        <section class="step">
+          <p class="hint">Clears today&apos;s emergency pause usage so the Emergency Pause button is available again on the block page.</p>
+          <button id="btn-reset-emergency-pause" class="btn btn-secondary" type="button">Reset Emergency Pause</button>
+          <p id="dev-emergency-pause-status" class="status-box"></p>
         </section>
         <button id="btn-disable-dev" class="btn btn-ghost" type="button">Disable Developer Mode</button>
       </div>
