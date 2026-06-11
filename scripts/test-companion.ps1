@@ -1,5 +1,16 @@
-$exe = "C:\Users\Juno\CodingProjects\WebWarden\companion\build\WebWardenCompanion.exe"
-if (-not (Test-Path $exe)) {
+$candidates = @(
+  (Join-Path $PSScriptRoot "..\companion\build\WebWardenCompanion.exe"),
+  (Join-Path $PSScriptRoot "..\companion\build\Release\WebWardenCompanion.exe")
+)
+$exe = $null
+foreach ($candidate in $candidates) {
+  $resolved = Resolve-Path $candidate -ErrorAction SilentlyContinue
+  if ($resolved) {
+    $exe = $resolved.Path
+    break
+  }
+}
+if (-not $exe) {
   Write-Error "Build the companion first: npm run build:companion"
 }
 
