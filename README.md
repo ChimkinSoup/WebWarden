@@ -107,7 +107,3 @@ Companion stores JSON files in `%APPDATA%/WebWarden/`:
 | `sessions.json` | Session log |
 | `analytics.json` | Usage counters |
 | `restart_token.json` | Last boot time for restart verification |
-
-## Theme
-
-Dark background (`#1a1a2e`) with blue accents (`#4a9eff`).
